@@ -350,9 +350,9 @@ def evaluate(model, corpus, p_stop, max_extracted_sentences, rouge_cal):
     return np.asarray(scores).mean(axis = 0)
 
 def run_predict():
-    max_doc_len=500
-    p_stop = 0.6
-    max_extracted_sentences = 5
+    max_doc_len = 500
+    p_stop = 0.5
+    max_extracted_sentences = 10
 
     model_name = 'model/rulingBR/300dim/run0/model_batch_63720.pt'
     print(f'max_doc_len: {max_doc_len}')
@@ -379,7 +379,21 @@ def run_predict():
 def predict(model, example, p_stop, max_extracted_sentences):
     stok = nltk.data.load('tokenizers/punkt/portuguese.pickle')
     example = stok.tokenize(example.lower())
-    extracted_summary = model.extract([example], p_stop_thres = p_stop, max_extracted_sentences_per_document = max_extracted_sentences )[0]
+    # extract(document_batch, p_stop_thres = 0.7, ngram_blocking = False, ngram = 3, 
+    #   return_sentence_position = False, return_sentence_score_history = False, max_extracted_sentences_per_document = 4 ):
+
+    #  results = [(extracted_sentences, extracted_sentences_positions, sentence_score_history , p_stop_history) ]
+        # if return_sentence_position:
+        #     results.append( extracted_sentences_positions )
+        # if return_sentence_score_history:
+        #     results+=[sentence_score_history , p_stop_history ]
+        # if len(results) == 1:
+        #     results = results[0]
+    # 
+    result = model.extract([example], p_stop_thres = p_stop, max_extracted_sentences_per_document = max_extracted_sentences,
+        return_sentence_score_history=True, return_sentence_position=True)
+    extracted_summary = result[0][0]
+    print(f'Total de sentenças extraídas: {len(extracted_summary)}')
     return '\n'.join(extracted_summary)
 
 
