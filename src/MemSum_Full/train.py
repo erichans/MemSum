@@ -113,11 +113,19 @@ log_out_file = log_folder + "/train.log"
 training_corpus = load_corpus( training_corpus_file_name, True )
 validation_corpus = load_corpus( validation_corpus_file_name, False )
 
-with open( vocabulary_file_name, "rb") as f:
-    words = pickle.load(f)
-with open(pretrained_unigram_embeddings_file_name, "rb") as f:
-    pretrained_embedding = pickle.load(f)
-vocab = Vocab(words)
+from gensim.models import KeyedVectors
+import gc
+model = KeyedVectors.load_word2vec_format(pretrained_unigram_embeddings_file_name, binary=True)
+
+# with open( vocabulary_file_name, "rb") as f:
+    # words = pickle.load(f)
+# with open(pretrained_unigram_embeddings_file_name, "rb") as f:
+#     pretrained_embedding = pickle.load(f)
+vocab = Vocab(model.index_to_key, dict(model.key_to_index))
+# pretrained_embedding = np.array((len(model), model.vector_size))
+pretrained_embedding = np.array([model[word] for word in model.index_to_key])
+del model
+print(gc.collect())
 vocab_size, embed_dim = pretrained_embedding.shape
 
 train_dataset = ExtractionTrainingDataset(  training_corpus,  vocab , max_seq_len,  max_doc_len)
@@ -224,8 +232,8 @@ def train_iteration(batch):
     global_context_embed = global_context_encoder( local_sen_embed, doc_mask , dropout_rate )
     
     doc_mask_np = doc_mask.detach().cpu().numpy()
-    remaining_mask_np = np.ones_like( doc_mask_np ).astype( np.bool ) | doc_mask_np
-    extraction_mask_np = np.zeros_like( doc_mask_np ).astype( np.bool ) | doc_mask_np
+    remaining_mask_np = np.ones_like( doc_mask_np ).astype( bool ) | doc_mask_np
+    extraction_mask_np = np.zeros_like( doc_mask_np ).astype( bool ) | doc_mask_np
     
     log_action_prob_list = []
     log_stop_prob_list = []
@@ -305,8 +313,8 @@ def validation_iteration(batch):
     
     num_documents = seqs.size(0)
     doc_mask = doc_mask.detach().cpu().numpy()
-    remaining_mask_np = np.ones_like( doc_mask ).astype( np.bool ) | doc_mask
-    extraction_mask_np = np.zeros_like( doc_mask ).astype( np.bool ) | doc_mask
+    remaining_mask_np = np.ones_like( doc_mask ).astype( bool ) | doc_mask
+    extraction_mask_np = np.zeros_like( doc_mask ).astype( bool ) | doc_mask
     
     
     done_list = []
@@ -357,7 +365,7 @@ def validation_iteration(batch):
 for epoch in range( current_epoch, num_of_epochs ):
     running_loss = 0 
     
-    for count, batch in tqdm(enumerate(train_data_loader)):
+    for count, batch in enumerate(tqdm(train_data_loader)):
         loss = train_iteration(batch)
         running_loss += loss
 
@@ -394,8 +402,8 @@ for epoch in range( current_epoch, num_of_epochs ):
             avg_val_rouge1 = np.mean( val_rouge1 )
             avg_val_rouge2 = np.mean( val_rouge2 )
             avg_val_rougeL = np.mean( val_rougeL )
-            print("val: %.4f, %.4f, %.4f"%(avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
-            LOG("val: %.4f, %.4f, %.4f"%(avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
+            print("validation: Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f"%(avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
+            LOG("validation: Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f"%(avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
             # scheduler.step( (avg_val_rouge1 + avg_val_rouge2 +avg_val_rougeL)/3 )
 
         if  current_batch % save_every == 0 or count == len(train_data_loader) - 1:  

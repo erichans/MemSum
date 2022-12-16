@@ -18,22 +18,31 @@ import json
 
 
 class MemSum:
-    def __init__( self, model_path, vocabulary_path, gpu = None , embed_dim=200, num_heads=8, hidden_dim = 1024, N_enc_l = 2 , N_enc_g = 2, N_dec = 3,  max_seq_len =100, max_doc_len = 500  ):
-        with open( vocabulary_path , "rb" ) as f:
-            words = pickle.load(f)
-        self.vocab = Vocab_MemSum_Full( words )
-        vocab_size = len(words)
+    def __init__( self, model_path, vocabulary_path, gpu = None , embed_dim=300, num_heads=8, hidden_dim = 1024, N_enc_l = 2 , N_enc_g = 2, N_dec = 3,  max_seq_len =100, max_doc_len = 500  ):
+        # with open( vocabulary_path , 'rb' ) as f:
+        #     words = pickle.load(f)
+        
+        from gensim.models import KeyedVectors
+        import gc
+        model = KeyedVectors.load_word2vec_format(vocabulary_path, binary=True)
+        # self.vocab = Vocab_MemSum_Full( words )
+        self.vocab = Vocab_MemSum_Full(model.index_to_key, dict(model.key_to_index))
+        
+        vocab_size = len(model)
+        del model
+        gc.collect()
+
         self.local_sentence_encoder = LocalSentenceEncoder_MemSum_Full( vocab_size, self.vocab.pad_index, embed_dim,num_heads,hidden_dim,N_enc_l, None )
         self.global_context_encoder = GlobalContextEncoder_MemSum_Full( embed_dim, num_heads, hidden_dim, N_enc_g )
         self.extraction_context_decoder = ExtractionContextDecoder_MemSum_Full( embed_dim, num_heads, hidden_dim, N_dec )
         self.extractor = Extractor_MemSum_Full( embed_dim, num_heads )
-        ckpt = torch.load( model_path, map_location = "cpu" )
-        self.local_sentence_encoder.load_state_dict( ckpt["local_sentence_encoder"] )
-        self.global_context_encoder.load_state_dict( ckpt["global_context_encoder"] )
-        self.extraction_context_decoder.load_state_dict( ckpt["extraction_context_decoder"] )
-        self.extractor.load_state_dict(ckpt["extractor"])
+        ckpt = torch.load( model_path, map_location = 'cpu' )
+        self.local_sentence_encoder.load_state_dict( ckpt['local_sentence_encoder'] )
+        self.global_context_encoder.load_state_dict( ckpt['global_context_encoder'] )
+        self.extraction_context_decoder.load_state_dict( ckpt['extraction_context_decoder'] )
+        self.extractor.load_state_dict(ckpt['extractor'])
         
-        self.device =  torch.device( "cuda:%d"%(gpu) if gpu is not None and torch.cuda.is_available() else "cpu"  )        
+        self.device =  torch.device( 'cuda:%d'%(gpu) if gpu is not None and torch.cuda.is_available() else 'cpu'  )        
         self.local_sentence_encoder.to(self.device)
         self.global_context_encoder.to(self.device)
         self.extraction_context_decoder.to(self.device)
@@ -46,15 +55,15 @@ class MemSum:
     def get_ngram(self,  w_list, n = 4 ):
         ngram_set = set()
         for pos in range(len(w_list) - n + 1 ):
-            ngram_set.add( "_".join( w_list[ pos:pos+n] )  )
+            ngram_set.add( '_'.join( w_list[ pos:pos+n] )  )
         return ngram_set
 
     def extract( self, document_batch, p_stop_thres = 0.7, ngram_blocking = False, ngram = 3, return_sentence_position = False, return_sentence_score_history = False, max_extracted_sentences_per_document = 4 ):
-        """document_batch is a batch of documents:
+        '''document_batch is a batch of documents:
         [  [ sen1, sen2, ... , senL1 ], 
            [ sen1, sen2, ... , senL2], ...
          ]
-        """
+        '''
         ## tokenization:
         document_length_list = []
         sentence_length_list = []
@@ -80,9 +89,9 @@ class MemSum:
                 document = document[:max_document_length]
             else:
                 # doc_mask.append(  [0] * len(document) +[1] * ( max_document_length -  len(document) ) )
-                document = document + [""] * ( max_document_length -  len(document) )
+                document = document + [''] * ( max_document_length -  len(document) )
 
-            doc_mask.append(  [ 1 if sen.strip() == "" else 0 for sen in  document   ] )
+            doc_mask.append(  [ 1 if sen.strip() == '' else 0 for sen in  document   ] )
 
             document_sequences = []
             for sen in document:
@@ -113,8 +122,8 @@ class MemSum:
         
             for doc_i in range(num_documents):
                 current_doc_mask = doc_mask[doc_i:doc_i+1]
-                current_remaining_mask_np = np.ones_like(current_doc_mask ).astype(np.bool) | current_doc_mask
-                current_extraction_mask_np = np.zeros_like(current_doc_mask).astype(np.bool) | current_doc_mask
+                current_remaining_mask_np = np.ones_like(current_doc_mask ).astype(bool) | current_doc_mask
+                current_extraction_mask_np = np.zeros_like(current_doc_mask).astype(bool) | current_doc_mask
         
                 current_sen_embed = sen_embed[doc_i:doc_i+1]
                 current_relevance_embed = relevance_embed[ doc_i:doc_i+1 ]
@@ -195,7 +204,7 @@ class MemSum:
 class ExtractiveSummarizer_NeuSum:
     def __init__( self, model_path, vocabulary_path, gpu = None , embed_dim=200,
                  max_seq_len =100, max_doc_len = 500 , **kwargs ):
-        with open( vocabulary_path , "rb" ) as f:
+        with open( vocabulary_path , 'rb' ) as f:
             words = pickle.load(f)
         self.vocab = Vocab_NeuSum( words )
         vocab_size = len(words)
@@ -203,13 +212,13 @@ class ExtractiveSummarizer_NeuSum:
         self.global_context_encoder = GlobalContextEncoder_NeuSum( embed_dim)
         self.extraction_context_decoder = ExtractionContextDecoder_NeuSum( embed_dim)
         self.extractor = Extractor_NeuSum( embed_dim )
-        ckpt = torch.load( model_path, map_location = "cpu" )
-        self.local_sentence_encoder.load_state_dict( ckpt["local_sentence_encoder"] )
-        self.global_context_encoder.load_state_dict( ckpt["global_context_encoder"] )
-        self.extraction_context_decoder.load_state_dict( ckpt["extraction_context_decoder"] )
-        self.extractor.load_state_dict(ckpt["extractor"])
+        ckpt = torch.load( model_path, map_location = 'cpu' )
+        self.local_sentence_encoder.load_state_dict( ckpt['local_sentence_encoder'] )
+        self.global_context_encoder.load_state_dict( ckpt['global_context_encoder'] )
+        self.extraction_context_decoder.load_state_dict( ckpt['extraction_context_decoder'] )
+        self.extractor.load_state_dict(ckpt['extractor'])
         
-        self.device =  torch.device( "cuda:%d"%(gpu) if gpu is not None and torch.cuda.is_available() else "cpu"  )        
+        self.device =  torch.device( 'cuda:%d'%(gpu) if gpu is not None and torch.cuda.is_available() else 'cpu'  )        
         self.local_sentence_encoder.to(self.device)
         self.global_context_encoder.to(self.device)
         self.extraction_context_decoder.to(self.device)
@@ -221,11 +230,11 @@ class ExtractiveSummarizer_NeuSum:
     
 
     def extract( self, document_batch, return_sentence_position = False, max_extracted_sentences_per_document = 7, **kwargs ):
-        """document_batch is a batch of documents:
+        '''document_batch is a batch of documents:
         [  [ sen1, sen2, ... , senL1 ], 
            [ sen1, sen2, ... , senL2], ...
          ]
-        """
+        '''
         ## tokenization:
         document_length_list = []
         sentence_length_list = []
@@ -251,9 +260,9 @@ class ExtractiveSummarizer_NeuSum:
                 document = document[:max_document_length]
             else:
                 # doc_mask.append(  [0] * len(document) +[1] * ( max_document_length -  len(document) ) )
-                document = document + [""] * ( max_document_length -  len(document) )
+                document = document + [''] * ( max_document_length -  len(document) )
 
-            doc_mask.append(  [ 1 if sen.strip() == "" else 0 for sen in  document   ] )
+            doc_mask.append(  [ 1 if sen.strip() == '' else 0 for sen in  document   ] )
 
             document_sequences = []
             for sen in document:
@@ -280,8 +289,8 @@ class ExtractiveSummarizer_NeuSum:
         
             for doc_i in range(num_documents):
                 current_doc_mask = doc_mask[doc_i:doc_i+1]
-                current_remaining_mask_np = np.ones_like(current_doc_mask ).astype(np.bool) | current_doc_mask
-                current_extraction_mask_np = np.zeros_like(current_doc_mask).astype(np.bool) | current_doc_mask
+                current_remaining_mask_np = np.ones_like(current_doc_mask ).astype(bool) | current_doc_mask
+                current_extraction_mask_np = np.zeros_like(current_doc_mask).astype(bool) | current_doc_mask
         
                 current_global_context_embed = global_context_embed[doc_i:doc_i+1]
                 current_hidden_state = backward_state[ doc_i:doc_i+1 ]
@@ -314,4 +323,67 @@ class ExtractiveSummarizer_NeuSum:
             results = results[0]
         return results
 
+from tqdm import tqdm
+from rouge_score import rouge_scorer
+import json
+import numpy as np
+import os
+import nltk
 
+def run_eval():
+    rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=True)
+
+    memsum = MemSum('model/rulingBR/300dim/run0/model_batch_63720.pt', 'model/glove/glove_s300.bin', gpu=0, max_doc_len=500)
+    test_corpus = [ json.loads(line) for line in open('data/custom_data/val_CUSTOM_raw.jsonl') ]
+
+    print(evaluate(memsum, test_corpus, 0.6, 25, rouge_cal))
+
+def evaluate(model, corpus, p_stop, max_extracted_sentences, rouge_cal):
+    scores = []
+    for data in tqdm(corpus):
+        gold_summary = data["summary"]
+        extracted_summary = model.extract( [data["text"]], p_stop_thres = p_stop, max_extracted_sentences_per_document = max_extracted_sentences )[0]
+        
+        score = rouge_cal.score( "\n".join( gold_summary ), "\n".join(extracted_summary)  )
+        scores.append( [score["rouge1"].fmeasure, score["rouge2"].fmeasure, score["rougeLsum"].fmeasure ] )
+    
+    return np.asarray(scores).mean(axis = 0)
+
+def run_predict():
+    max_doc_len=500
+    p_stop = 0.6
+    max_extracted_sentences = 5
+
+    model_name = 'model/rulingBR/300dim/run0/model_batch_63720.pt'
+    print(f'max_doc_len: {max_doc_len}')
+    print(f'max_extracted_sentences: {max_extracted_sentences}')
+    print(f'p_stop: {p_stop}')
+    print(f'Loading model {model_name}')
+    memsum = MemSum(model_name, 'model/glove/glove_s300.bin', gpu=0, max_doc_len=max_doc_len)
+    
+
+    # filename = 'instrucao2.txt'
+    filename = 'instrucao_tratada_exame_tecnico.txt'
+    # filename = 'exame_tecnico_teste.txt'
+    # filename = 'instrucao_tratada_exame_tecnico_media.txt'
+    # filename = 'texto_aleatorio.txt'
+    # filename = 'instrucao_ruim.txt'
+
+    path = os.path.join('../abs-sum-pt/tcu/instrucoes_questionario')
+    with open(os.path.join(path, filename), 'r',  encoding='utf-8') as f:
+        example = f.read()
+    
+    print(f'Arquivo: {filename}')
+    print(predict(memsum, example, p_stop=p_stop, max_extracted_sentences=max_extracted_sentences))
+
+def predict(model, example, p_stop, max_extracted_sentences):
+    stok = nltk.data.load('tokenizers/punkt/portuguese.pickle')
+    example = stok.tokenize(example.lower())
+    extracted_summary = model.extract([example], p_stop_thres = p_stop, max_extracted_sentences_per_document = max_extracted_sentences )[0]
+    return '\n'.join(extracted_summary)
+
+
+
+if __name__ == '__main__':
+    # run_eval()
+    run_predict()

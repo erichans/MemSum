@@ -1,0 +1,35 @@
+{
+    // Use IntelliSense to learn about possible attributes.
+    // Hover to view descriptions of existing attributes.
+    // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "train.py",
+            "type": "python",
+            "request": "launch",
+            "program": "train.py",
+            "console": "integratedTerminal",
+            "justMyCode": false,
+            "cwd": "${workspaceFolder}/src/MemSum_Full",
+            "args": [
+                "-training_corpus_file_name", "../../data/custom_data/train_CUSTOM_labelled.jsonl", 
+                "-validation_corpus_file_name", "../../data/custom_data/val_CUSTOM_raw.jsonl",
+                "-model_folder", "../../model/rulingBR/300dim/run0/",
+                "-log_folder", "../../log/rulingBR/300dim/run0/",
+                "-vocabulary_file_name", "../../model/glove/vocabulary_200dim.pkl",
+                "-pretrained_unigram_embeddings_file_name", "../../model/glove/glove_s300.bin",
+                "-max_seq_len", "100", 
+                "-max_doc_len", "500", 
+                "-num_of_epochs", "20",
+                "-validate_every", "1000",
+                "-save_every", "1000",
+                "-n_device", "1",
+                "-batch_size_per_device", "2",
+                "-max_extracted_sentences_per_document", "7", 
+                "-moving_average_decay", "0.999",
+                "-p_stop_thres", "0.6"
+            ]
+        }
+    ]
+}

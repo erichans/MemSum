@@ -1,16 +1,16 @@
 import numpy as np
 
 import nltk
-from nltk.tokenize import  RegexpTokenizer
-from nltk.stem import SnowballStemmer
+from nltk.tokenize import RegexpTokenizer
+from nltk.stem import RSLPStemmer
 from functools import lru_cache
 
-
+nltk.download('rslp')
 
 class SentenceTokenizer:
     def __init__(self ):
         self.tokenizer = RegexpTokenizer(r'\w+')
-        self.stemmer = SnowballStemmer("english")
+        self.stemmer = RSLPStemmer()
 
     @lru_cache(100000)
     def stem( self, w ):
@@ -182,5 +182,25 @@ def greedy_extract( document, summary, beamsearch_size=1 , max_num_extracted_sen
     
     return cleaned_candidate_extractions
     
+def generate_dataset():
+    pass
     
-    
+def preprocess():    
+    import json
+    from tqdm import tqdm
+
+    train_corpus = [ json.loads(line) for line in open("data/custom_data/train_CUSTOM_raw.jsonl") ]
+    for data in tqdm(train_corpus):
+        high_rouge_episodes = greedy_extract( data["text"], data["summary"], beamsearch_size = 2 )
+        indices_list = []
+        score_list  = []
+
+        for indices, score in high_rouge_episodes:
+            indices_list.append( indices )
+            score_list.append(score)
+
+        data["indices"] = indices_list
+        data["score"] = score_list
+
+if __name__ == '__main__':
+    preprocess()

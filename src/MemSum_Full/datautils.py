@@ -16,13 +16,9 @@ class SentenceTokenizer:
         return sen.lower()
 
 class Vocab:
-    def __init__(self, words, eos_token = "<eos>", pad_token = "<pad>", unk_token = "<unk>" ):
+    def __init__(self, words, key_to_index, eos_token = '<eos>', pad_token = '<pad>', unk_token = '<unk>' ):
         self.words = words
-        self.index_to_word = {}
-        self.word_to_index = {}
-        for idx in range( len(words) ):
-            self.index_to_word[ idx ] = words[idx]
-            self.word_to_index[ words[idx] ] = idx
+        self.word_to_index = key_to_index
         self.eos_token = eos_token
         self.pad_token = pad_token
         self.unk_token = unk_token
@@ -32,7 +28,7 @@ class Vocab:
         self.tokenizer = SentenceTokenizer()   
 
     def index2word( self, idx ):
-        return self.index_to_word.get( idx, self.unk_token)
+        return self.words[idx] if idx < len(self.words) and idx >= 0 else self.unk_token
     def word2index( self, word ):
         return self.word_to_index.get( word, -1 )
     # The sentence needs to be tokenized 

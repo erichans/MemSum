@@ -167,3 +167,6 @@ cython_debug/
 /models/
 /saved_models/
 dataset/
+model/
+rulingBR/
+data/
