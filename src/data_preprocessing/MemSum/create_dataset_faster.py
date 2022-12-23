@@ -7,7 +7,7 @@ from rouge_score import rouge_scorer
 import re
 import nltk
 from nltk.tokenize import  RegexpTokenizer
-from nltk.stem import SnowballStemmer
+from nltk.stem import RSLPStemmer
 from functools import lru_cache
 from nltk.corpus import stopwords
 from nltk.tokenize import sent_tokenize
@@ -19,7 +19,7 @@ import argparse
 class SentenceTokenizer:
     def __init__(self ):
         self.tokenizer = RegexpTokenizer(r'\w+')
-        self.stemmer = SnowballStemmer("english")
+        self.stemmer = RSLPStemmer()
 
     @lru_cache(100000)
     def stem( self, w ):
@@ -193,7 +193,13 @@ if __name__ == "__main__":
 
     print(args)
 
-    rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=True)
+    # rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=True)
+    from nltk.stem import RSLPStemmer
+    nltk.download('rslp') 
+
+    rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=False) #no stemmer to set specific for potuguese
+    rouge_cal._tokenizer._stemmer = RSLPStemmer()
+    
 
 
     if not ( args.start == 0 and args.size == 0 ):

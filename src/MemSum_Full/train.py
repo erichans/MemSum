@@ -212,7 +212,12 @@ if ckpt is not None:
 
 np.random.seed()
 
-rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=True)
+import nltk
+from nltk.stem import RSLPStemmer
+nltk.download('rslp') 
+
+rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=False) #no stemmer to set specific for potuguese
+rouge_cal._tokenizer._stemmer = RSLPStemmer()
 
 
 def train_iteration(batch):
@@ -362,7 +367,7 @@ def validation_iteration(batch):
     return scores
 
 
-for epoch in range( current_epoch, num_of_epochs ):
+for epoch in tqdm(range(current_epoch, num_of_epochs)):
     running_loss = 0 
     
     for count, batch in enumerate(tqdm(train_data_loader)):
@@ -394,7 +399,7 @@ for epoch in range( current_epoch, num_of_epochs ):
             # validation
             val_score_list = []
             with torch.no_grad():
-                for batch in val_data_loader:
+                for batch in tqdm(val_data_loader):
                     val_score_list += validation_iteration(batch)
 
             val_rouge1, val_rouge2, val_rougeL = list( zip( *val_score_list ) )
