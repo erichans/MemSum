@@ -331,12 +331,27 @@ import os
 import nltk
 
 def run_eval():
-    rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=True)
+    from nltk.stem import RSLPStemmer
+    nltk.download('rslp') 
 
-    memsum = MemSum('model/rulingBR/300dim/run0/model_batch_63720.pt', 'model/glove/glove_s300.bin', gpu=0, max_doc_len=500)
+    rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=False) #no stemmer to set specific for potuguese
+    rouge_cal._tokenizer._stemmer = RSLPStemmer()
+
+    max_doc_len = 500
+    p_stop = 0.5
+    max_extracted_sentences = 10
+
+    model_name = 'model/rulingBR/300dim/run0/model_batch_63720.pt'
+    embeddings_model = 'model/glove/glove_s300.bin'
+    print(f'max_doc_len: {max_doc_len}')
+    print(f'max_extracted_sentences: {max_extracted_sentences}')
+    print(f'p_stop: {p_stop}')
+    print(f'Loading model {model_name} and embeddings model: {embeddings_model}')
+    
+    memsum = MemSum(model_name, embeddings_model, gpu=0, max_doc_len=max_doc_len)
     test_corpus = [ json.loads(line) for line in open('data/custom_data/val_CUSTOM_raw.jsonl') ]
 
-    print(evaluate(memsum, test_corpus, 0.6, 25, rouge_cal))
+    print(evaluate(memsum, test_corpus, p_stop, max_extracted_sentences, rouge_cal))
 
 def evaluate(model, corpus, p_stop, max_extracted_sentences, rouge_cal):
     scores = []
@@ -355,11 +370,12 @@ def run_predict():
     max_extracted_sentences = 10
 
     model_name = 'model/rulingBR/300dim/run0/model_batch_63720.pt'
+    embeddings_model = 'model/glove/glove_s300.bin'
     print(f'max_doc_len: {max_doc_len}')
     print(f'max_extracted_sentences: {max_extracted_sentences}')
     print(f'p_stop: {p_stop}')
-    print(f'Loading model {model_name}')
-    memsum = MemSum(model_name, 'model/glove/glove_s300.bin', gpu=0, max_doc_len=max_doc_len)
+    print(f'Loading model {model_name} and embeddings model: {embeddings_model}')
+    memsum = MemSum(model_name, embeddings_model, gpu=0, max_doc_len=max_doc_len)
     
 
     # filename = 'instrucao2.txt'
@@ -399,5 +415,5 @@ def predict(model, example, p_stop, max_extracted_sentences):
 
 
 if __name__ == '__main__':
-    # run_eval()
-    run_predict()
+    run_eval()
+    # run_predict()
