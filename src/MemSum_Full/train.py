@@ -404,11 +404,11 @@ for epoch in tqdm(range(current_epoch, num_of_epochs)):
 
             val_rouge1, val_rouge2, val_rougeL = list( zip( *val_score_list ) )
 
-            avg_val_rouge1 = np.mean( val_rouge1 )
-            avg_val_rouge2 = np.mean( val_rouge2 )
-            avg_val_rougeL = np.mean( val_rougeL )
-            print("validation: eval_Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f"%(avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
-            LOG("validation: eval_Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f"%(avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
+            avg_val_rouge1 = np.mean( val_rouge1 ) * 100
+            avg_val_rouge2 = np.mean( val_rouge2 ) * 100
+            avg_val_rougeL = np.mean( val_rougeL ) * 100
+            print("validation [current_batch: %05d]: eval_Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f"%(current_batch, avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
+            LOG("validation [current_batch: %05d]: eval_Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f"%(current_batch, avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
             # scheduler.step( (avg_val_rouge1 + avg_val_rouge2 +avg_val_rougeL)/3 )
 
         if  current_batch % save_every == 0 or count == len(train_data_loader) - 1:  
