@@ -15,8 +15,8 @@
             "args": [
                 "-training_corpus_file_name", "../../data/custom_data/train_CUSTOM_labelled.jsonl", 
                 "-validation_corpus_file_name", "../../data/custom_data/val_CUSTOM_raw.jsonl",
-                "-model_folder", "../../model/rulingBR/300dim/run1/",
-                "-log_folder", "../../log/rulingBR/300dim/run1/",
+                "-model_folder", "../../model/rulingBR/300dim/run3/",
+                "-log_folder", "../../log/rulingBR/300dim/run3/",
                 "-pretrained_unigram_embeddings_file_name", "../../model/glove/glove_s300.bin",
                 "-max_seq_len", "100", 
                 "-max_doc_len", "500", 
