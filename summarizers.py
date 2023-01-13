@@ -42,7 +42,7 @@ class MemSum:
         self.extraction_context_decoder.load_state_dict( ckpt['extraction_context_decoder'] )
         self.extractor.load_state_dict(ckpt['extractor'])
         
-        self.device =  torch.device( 'cuda:%d'%(gpu) if gpu is not None and torch.cuda.is_available() else 'cpu'  )        
+        self.device =  torch.device( 'cuda:%d'%(gpu) if gpu is not None and torch.cuda.is_available() else 'cpu'  )
         self.local_sentence_encoder.to(self.device)
         self.global_context_encoder.to(self.device)
         self.extraction_context_decoder.to(self.device)
@@ -330,6 +330,15 @@ import numpy as np
 import os
 import nltk
 
+model_name = 'model/rulingBR/300dim/run1/model_batch_63720.pt'
+embeddings_model = 'model/glove/glove_s300.bin'
+
+max_doc_len = 500
+p_stop = 0.5
+max_extracted_sentences = 25 #10 for TCU
+
+gpu = 0
+
 def run_eval():
     from nltk.stem import RSLPStemmer
     nltk.download('rslp') 
@@ -337,21 +346,16 @@ def run_eval():
     rouge_cal = rouge_scorer.RougeScorer(['rouge1','rouge2', 'rougeLsum'], use_stemmer=False) #no stemmer to set specific for potuguese
     rouge_cal._tokenizer._stemmer = RSLPStemmer()
 
-    max_doc_len = 500
-    p_stop = 0.5
-    max_extracted_sentences = 10
-
-    model_name = 'model/rulingBR/300dim/run0/model_batch_63720.pt'
-    embeddings_model = 'model/glove/glove_s300.bin'
     print(f'max_doc_len: {max_doc_len}')
     print(f'max_extracted_sentences: {max_extracted_sentences}')
     print(f'p_stop: {p_stop}')
     print(f'Loading model {model_name} and embeddings model: {embeddings_model}')
     
-    memsum = MemSum(model_name, embeddings_model, gpu=0, max_doc_len=max_doc_len)
-    test_corpus = [ json.loads(line) for line in open('data/custom_data/val_CUSTOM_raw.jsonl') ]
+    memsum = MemSum(model_name, embeddings_model, gpu=gpu, max_doc_len=max_doc_len)
+    test_corpus = [ json.loads(line) for line in open('data/custom_data/test_CUSTOM_raw.jsonl') ]
 
-    print(evaluate(memsum, test_corpus, p_stop, max_extracted_sentences, rouge_cal))
+    rouges = evaluate(memsum, test_corpus, p_stop, max_extracted_sentences, rouge_cal)
+    print("test_Rouge-1_F-1: %.4f, test_Rouge-2_F-1: %.4f, test_Rouge-LSum_F-1: %.4f"%(rouges[0], rouges[1], rouges[2]))
 
 def evaluate(model, corpus, p_stop, max_extracted_sentences, rouge_cal):
     scores = []
@@ -362,20 +366,14 @@ def evaluate(model, corpus, p_stop, max_extracted_sentences, rouge_cal):
         score = rouge_cal.score( "\n".join( gold_summary ), "\n".join(extracted_summary)  )
         scores.append( [score["rouge1"].fmeasure, score["rouge2"].fmeasure, score["rougeLsum"].fmeasure ] )
     
-    return np.asarray(scores).mean(axis = 0)
+    return np.asarray(scores).mean(axis = 0) * 100
 
 def run_predict():
-    max_doc_len = 500
-    p_stop = 0.5
-    max_extracted_sentences = 10
-
-    model_name = 'model/rulingBR/300dim/run0/model_batch_63720.pt'
-    embeddings_model = 'model/glove/glove_s300.bin'
     print(f'max_doc_len: {max_doc_len}')
     print(f'max_extracted_sentences: {max_extracted_sentences}')
     print(f'p_stop: {p_stop}')
     print(f'Loading model {model_name} and embeddings model: {embeddings_model}')
-    memsum = MemSum(model_name, embeddings_model, gpu=0, max_doc_len=max_doc_len)
+    memsum = MemSum(model_name, embeddings_model, gpu=gpu, max_doc_len=max_doc_len)
     
 
     # filename = 'instrucao2.txt'
@@ -390,7 +388,9 @@ def run_predict():
         example = f.read()
     
     print(f'Arquivo: {filename}')
-    print(predict(memsum, example, p_stop=p_stop, max_extracted_sentences=max_extracted_sentences))
+    resumo = predict(memsum, example, p_stop=p_stop, max_extracted_sentences=max_extracted_sentences)
+    print('Resumo:', end='\n\n')
+    print(resumo)
 
 def predict(model, example, p_stop, max_extracted_sentences):
     stok = nltk.data.load('tokenizers/punkt/portuguese.pickle')
@@ -415,5 +415,5 @@ def predict(model, example, p_stop, max_extracted_sentences):
 
 
 if __name__ == '__main__':
-    run_eval()
-    # run_predict()
+    # run_eval()
+    run_predict()
