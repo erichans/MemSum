@@ -15,6 +15,9 @@ import copy
 
 import argparse
 
+from evaluate import load as load_metric
+from metrics import moverscore
+
 def update_moving_average( m_ema, m, decay ):
     with torch.no_grad():
         param_dict_m_ema =  m_ema.module.parameters()  if isinstance(  m_ema, nn.DataParallel ) else m_ema.parameters() 
@@ -305,6 +308,8 @@ def train_iteration(batch):
 
     return loss.item()
 
+lang = 'pt'
+bertscore = load_metric('bertscore')
 
 def validation_iteration(batch):
     seqs, doc_mask, sentences, summary = batch
@@ -319,8 +324,7 @@ def validation_iteration(batch):
     num_documents = seqs.size(0)
     doc_mask = doc_mask.detach().cpu().numpy()
     remaining_mask_np = np.ones_like( doc_mask ).astype( bool ) | doc_mask
-    extraction_mask_np = np.zeros_like( doc_mask ).astype( bool ) | doc_mask
-    
+    extraction_mask_np = np.zeros_like( doc_mask ).astype( bool ) | doc_mask    
     
     done_list = []
     extraction_context_embed = None
@@ -361,8 +365,12 @@ def validation_iteration(batch):
         extracted_sen_indices = np.argwhere( remaining_mask_np[doc_i] == False )[:,0]
         hyp = "\n".join( [sentences[doc_i][idx] for idx in extracted_sen_indices] ).strip()
 
-        score = rouge_cal.score( hyp, ref )
-        scores.append( (score["rouge1"].fmeasure,score["rouge2"].fmeasure,score["rougeLsum"].fmeasure) )
+        score = rouge_cal.score(prediction=hyp, target=ref)
+        # result_bertscore = bertscore.compute(predictions=[hyp], references=[ref], lang=lang)
+        # result_moverscore = moverscore.compute(predictions=[hyp], references=[ref])
+
+        # scores.append([score["rouge1"].fmeasure, score["rouge2"].fmeasure, score["rougeLsum"].fmeasure, result_bertscore['f1'][0], result_moverscore])
+        scores.append([score["rouge1"].fmeasure, score["rouge2"].fmeasure, score["rougeLsum"].fmeasure])
 
     return scores
 
@@ -402,12 +410,17 @@ for epoch in tqdm(range(current_epoch, num_of_epochs)):
                 for batch in tqdm(val_data_loader):
                     val_score_list += validation_iteration(batch)
 
+            # val_rouge1, val_rouge2, val_rougeL, val_bertscore, val_moverscore = list( zip( *val_score_list ) )
             val_rouge1, val_rouge2, val_rougeL = list( zip( *val_score_list ) )
 
             avg_val_rouge1 = np.mean( val_rouge1 ) * 100
             avg_val_rouge2 = np.mean( val_rouge2 ) * 100
             avg_val_rougeL = np.mean( val_rougeL ) * 100
+            # avg_val_bertscore = np.mean(val_bertscore) * 100
+            # avg_val_moverscore = np.mean( val_moverscore ) * 100
+            # print("validation [current_batch: %05d]: eval_Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f, eval_BERTScore_F-1: %.4f, eval_MoverScore_F-1: %.4f"%(current_batch, avg_val_rouge1, avg_val_rouge2, avg_val_rougeL, avg_val_bertscore, avg_val_moverscore))
             print("validation [current_batch: %05d]: eval_Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f"%(current_batch, avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
+            # LOG("validation [current_batch: %05d]: eval_Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f, eval_BERTScore_F-1: %.4f, val_MoverScore_F-1: %.4f"%(current_batch, avg_val_rouge1, avg_val_rouge2, avg_val_rougeL, avg_val_bertscore, avg_val_moverscore))
             LOG("validation [current_batch: %05d]: eval_Rouge-1_F-1: %.4f, eval_Rouge-2_F-1: %.4f, eval_Rouge-LSum_F-1: %.4f"%(current_batch, avg_val_rouge1, avg_val_rouge2, avg_val_rougeL))
             # scheduler.step( (avg_val_rouge1 + avg_val_rouge2 +avg_val_rougeL)/3 )
 
