@@ -15,8 +15,8 @@ import copy
 
 import argparse
 
-from evaluate import load as load_metric
-from metrics import moverscore
+# from evaluate import load as load_metric
+# from metrics import moverscore
 
 def update_moving_average( m_ema, m, decay ):
     with torch.no_grad():
@@ -308,8 +308,8 @@ def train_iteration(batch):
 
     return loss.item()
 
-lang = 'pt'
-bertscore = load_metric('bertscore')
+# lang = 'pt'
+# bertscore = load_metric('bertscore')
 
 def validation_iteration(batch):
     seqs, doc_mask, sentences, summary = batch
