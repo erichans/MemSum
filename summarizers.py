@@ -355,7 +355,6 @@ def run_eval():
     
     memsum = MemSum(model_name, embeddings_model, gpu=gpu, max_doc_len=max_doc_len)
     test_corpus = [ json.loads(line) for line in open('data/custom_data/test_CUSTOM_raw.jsonl') ]
-    test_corpus = test_corpus[:50]
 
     scores = evaluate(memsum, test_corpus, p_stop, max_extracted_sentences, rouge_cal)
     print("test_Rouge-1_F-1: %.4f, test_Rouge-2_F-1: %.4f, test_Rouge-LSum_F-1: %.4f, test_BERTScore_F-1: %.4f, test_MoverScore_F-1: %.4f"%(scores[0], scores[1], scores[2], scores[3], scores[4]))
