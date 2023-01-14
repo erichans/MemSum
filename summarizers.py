@@ -15,6 +15,8 @@ import numpy as np
 
 from tqdm import tqdm
 import json
+from evaluate import load as load_metric
+from metrics import moverscore
 
 
 class MemSum:
@@ -353,20 +355,30 @@ def run_eval():
     
     memsum = MemSum(model_name, embeddings_model, gpu=gpu, max_doc_len=max_doc_len)
     test_corpus = [ json.loads(line) for line in open('data/custom_data/test_CUSTOM_raw.jsonl') ]
+    test_corpus = test_corpus[:50]
 
-    rouges = evaluate(memsum, test_corpus, p_stop, max_extracted_sentences, rouge_cal)
-    print("test_Rouge-1_F-1: %.4f, test_Rouge-2_F-1: %.4f, test_Rouge-LSum_F-1: %.4f"%(rouges[0], rouges[1], rouges[2]))
+    scores = evaluate(memsum, test_corpus, p_stop, max_extracted_sentences, rouge_cal)
+    print("test_Rouge-1_F-1: %.4f, test_Rouge-2_F-1: %.4f, test_Rouge-LSum_F-1: %.4f, test_BERTScore_F-1: %.4f, test_MoverScore_F-1: %.4f"%(scores[0], scores[1], scores[2], scores[3], scores[4]))
 
 def evaluate(model, corpus, p_stop, max_extracted_sentences, rouge_cal):
+    lang = 'pt'
+    bertscore = load_metric('bertscore')
+
     scores = []
     for data in tqdm(corpus):
         gold_summary = data["summary"]
         extracted_summary = model.extract( [data["text"]], p_stop_thres = p_stop, max_extracted_sentences_per_document = max_extracted_sentences )[0]
         
-        score = rouge_cal.score( "\n".join( gold_summary ), "\n".join(extracted_summary)  )
-        scores.append( [score["rouge1"].fmeasure, score["rouge2"].fmeasure, score["rougeLsum"].fmeasure ] )
+        gold_summary = '\n'.join(gold_summary)
+        extracted_summary = '\n'.join(extracted_summary)
+
+        score = rouge_cal.score(prediction=extracted_summary, target=gold_summary)
+        result_bertscore = bertscore.compute(predictions=[extracted_summary], references=[gold_summary], lang=lang)
+        result_moverscore = moverscore.compute(predictions=[extracted_summary], references=[gold_summary])
+
+        scores.append([score["rouge1"].fmeasure, score["rouge2"].fmeasure, score["rougeLsum"].fmeasure, result_bertscore['f1'][0], result_moverscore])
     
-    return np.asarray(scores).mean(axis = 0) * 100
+    return np.round(np.asarray(scores).mean(axis = 0) * 100, 4)
 
 def run_predict():
     print(f'max_doc_len: {max_doc_len}')
@@ -415,5 +427,5 @@ def predict(model, example, p_stop, max_extracted_sentences):
 
 
 if __name__ == '__main__':
-    # run_eval()
-    run_predict()
+    run_eval()
+    # run_predict()
