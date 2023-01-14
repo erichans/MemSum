@@ -332,7 +332,7 @@ import numpy as np
 import os
 import nltk
 
-model_name = 'model/rulingBR/300dim/run1/model_batch_63720.pt'
+model_name = 'model/rulingBR/300dim/old/run1/model_batch_63720.pt'
 embeddings_model = 'model/glove/glove_s300.bin'
 
 max_doc_len = 500
@@ -405,7 +405,13 @@ def run_predict():
 
 def predict(model, example, p_stop, max_extracted_sentences):
     stok = nltk.data.load('tokenizers/punkt/portuguese.pickle')
-    example = stok.tokenize(example.lower())
+    additional_abbrevs = set(['art', 'arts', 'fl', 'fls', 'rel', 'Min', 'min', 'Rel', 'Vol', 'vol', 'ADV', 'adv', 'Adv', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'i', 'ii', 'iii', 'iv', 'v', 'vi', 'vii', 'viii', 'ix', 'x'])
+    stok._params.abbrev_types.update(additional_abbrevs)
+
+    # example = stok.tokenize(example.lower())
+    example_tokenized = stok.tokenize(example)
+    example_processed = list(map(str.lower, example_tokenized))
+
     # extract(document_batch, p_stop_thres = 0.7, ngram_blocking = False, ngram = 3, 
     #   return_sentence_position = False, return_sentence_score_history = False, max_extracted_sentences_per_document = 4 ):
 
@@ -417,14 +423,15 @@ def predict(model, example, p_stop, max_extracted_sentences):
         # if len(results) == 1:
         #     results = results[0]
     # 
-    result = model.extract([example], p_stop_thres = p_stop, max_extracted_sentences_per_document = max_extracted_sentences,
+    result = model.extract([example_processed], p_stop_thres = p_stop, max_extracted_sentences_per_document = max_extracted_sentences,
         return_sentence_score_history=True, return_sentence_position=True)
     extracted_summary = result[0][0]
     print(f'Total de sentenças extraídas: {len(extracted_summary)}')
-    return '\n'.join(extracted_summary)
+    # print('\n'.join(extracted_summary), end='\n\n')
+    return '\n'.join(np.asarray(example_tokenized)[result[1][0]])
 
 
 
 if __name__ == '__main__':
-    run_eval()
-    # run_predict()
+    # run_eval()
+    run_predict()
